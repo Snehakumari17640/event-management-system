@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EventHub - Event Management System</title>
+<style>
+  :root {
+    --sidebar: #1e1b4b; --sidebar-hover: #312e81; --accent: #4f46e5; --accent-hover: #4338ca;
+    --bg: #f3f4f6; --card: #ffffff; --text: #111827; --muted: #6b7280; --line: #e5e7eb; --input: #d1d5db;
+    --green: #16a34a; --green-hover: #15803d; --red: #dc2626; --head: #eef2ff; --head-text: #3730a3;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+  /* sidebar */
+  aside { width: 230px; background: var(--sidebar); color: #fff; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; flex-shrink: 0; }
+  .brand { padding: 26px 24px 22px; }
+  .brand h1 { margin: 0; font-size: 24px; }
+  .brand p { margin: 4px 0 0; font-size: 12px; color: #a5b4fc; }
+  nav { flex: 1; padding: 0 10px; display: flex; flex-direction: column; gap: 4px; }
+  nav button { background: none; border: 0; color: #c7d2fe; text-align: left; font: 600 14px inherit; font-family: inherit; padding: 12px 14px; border-radius: 12px; cursor: pointer; }
+  nav button:hover { background: var(--sidebar-hover); }
+  nav button.active { background: var(--accent); color: #fff; }
+  .side-foot { padding: 14px 20px 20px; font-size: 12px; color: #a5b4fc; line-height: 1.5; }
+  .side-foot button { margin-top: 8px; background: transparent; border: 1px solid #4f46e5; color: #c7d2fe; border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 12px; }
+  .side-foot button:hover { background: var(--sidebar-hover); }
+
+  /* main */
+  main { flex: 1; min-width: 0; padding: 22px 26px 30px; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  header h2 { margin: 0; font-size: 26px; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; }
+  .chip { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 14px; min-width: 84px; }
+  .chip b { display: block; font-size: 20px; color: var(--accent); }
+  .chip span { font-size: 12px; color: var(--muted); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+  .card h3 { margin: 0 0 12px; font-size: 16px; }
+  form.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  label { display: flex; flex-direction: column; font-size: 12px; font-weight: 600; color: var(--muted); gap: 4px; }
+  input, select { font: 14px inherit; font-family: inherit; color: var(--text); background: #fff; border: 1px solid var(--input); border-radius: 8px; padding: 8px 10px; height: 38px; }
+  input:focus, select:focus { outline: 2px solid #c7d2fe; border-color: var(--accent); }
+  button.btn { font: 600 14px inherit; font-family: inherit; color: #fff; background: var(--accent); border: 0; border-radius: 10px; padding: 0 20px; height: 38px; cursor: pointer; }
+  button.btn:hover { background: var(--accent-hover); }
+  button.btn.green { background: var(--green); }
+  button.btn.green:hover { background: var(--green-hover); }
+
+  .tablewrap { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: var(--head); color: var(--head-text); text-align: left; padding: 11px 14px; border-bottom: 1px solid #c7d2fe; white-space: nowrap; }
+  td { padding: 10px 14px; }
+  tbody tr:nth-child(even) { background: #f9fafb; }
+  td.empty { text-align: center; color: var(--muted); padding: 28px; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .t-Seminar { background: #e0e7ff; color: #3730a3; } .t-Workshop { background: #fef3c7; color: #92400e; } .t-Fest { background: #fce7f3; color: #9d174d; }
+  .muted { color: var(--muted); }
+  ol.help { margin: 0; padding-left: 20px; color: var(--muted); line-height: 1.8; }
+
+  section.page { display: none; }
+  section.page.active { display: block; }
+
+  /* toast and dialog */
+  #toast { position: fixed; right: 20px; bottom: 20px; background: #064e3b; color: #fff; padding: 12px 18px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.2); opacity: 0; transform: translateY(10px); transition: .25s; pointer-events: none; max-width: 340px; z-index: 5; }
+  #toast.show { opacity: 1; transform: none; }
+  #toast.err { background: #991b1b; }
+  dialog { border: 0; border-radius: 14px; padding: 22px 24px; max-width: 420px; box-shadow: 0 10px 40px rgba(0,0,0,.3); }
+  dialog::backdrop { background: rgba(17,24,39,.5); }
+  dialog h3 { margin: 0 0 8px; } dialog p { margin: 0 0 16px; color: var(--muted); line-height: 1.5; }
+  dialog.warn h3 { color: var(--red); }
+
+  @media (max-width: 820px) {
+    body { flex-direction: column; }
+    aside { width: 100%; height: auto; position: static; }
+    .brand { padding: 16px 18px 8px; }
+    nav { flex-direction: row; overflow-x: auto; padding: 0 10px 10px; }
+    nav button { white-space: nowrap; }
+    .side-foot { display: none; }
+    main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand"><h1>EventHub</h1><p>Event Management System</p></div>
+  <nav id="nav"></nav>
+  <div class="side-foot">
+    Web version of the Java Swing project. Data is saved in this browser.
+    <br><button id="resetBtn" type="button">Reset sample data</button>
+  </div>
+</aside>
+
+<main>
+  <header>
+    <div><h2 id="pageTitle">Events</h2><p id="pageSub"></p></div>
+    <div class="chips">
+      <div class="chip"><b id="sEvents">0</b><span>Events</span></div>
+      <div class="chip"><b id="sVenues">0</b><span>Venues</span></div>
+      <div class="chip"><b id="sRegs">0</b><span>Registrations</span></div>
+      <div class="chip"><b id="sOpen">0</b><span>No venue yet</span></div>
+    </div>
+  </header>
+
+  <!-- Module 1: Event creation -->
+  <section class="page" id="page-Events">
+    <div class="card"><h3>Create a new event</h3>
+      <form class="row" id="eventForm">
+        <label>Event name<input id="evName" required maxlength="80" placeholder="e.g. AI Seminar"></label>
+        <label>Type<select id="evType"><option>Seminar</option><option>Workshop</option><option>Fest</option></select></label>
+        <label>Date<input id="evDate" type="date" required></label>
+        <label>Start<input id="evStart" type="time" value="10:00" required></label>
+        <label>End<input id="evEnd" type="time" value="12:00" required></label>
+        <label>Capacity<input id="evCap" type="number" min="1" value="50" required style="width:90px"></label>
+        <button class="btn" type="submit">Create Event</button>
+      </form>
+    </div>
+    <div class="tablewrap"><table><thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Date</th><th>Start</th><th>End</th><th>Capacity</th><th>Venue</th></tr></thead><tbody id="eventRows"></tbody></table></div>
+  </section>
+
+  <!-- Module 2: Participant registration -->
+  <section class="page" id="page-Registration">
+    <div class="card"><h3>Register a participant</h3>
+      <form class="row" id="regForm">
+        <label>Event<select id="regEvent" style="min-width:240px"></select></label>
+        <label>Participant name<input id="regName" required maxlength="60"></label>
+        <label>Email<input id="regEmail" type="email" required></label>
+        <label>Phone (10 digits)<input id="regPhone" required inputmode="numeric" maxlength="10" pattern="\d{10}"></label>
+        <button class="btn" type="submit">Register</button>
+      </form>
+    </div>
+    <div class="card"><h3>How it works</h3>
+      <ol class="help"><li>Pick the event the person is joining.</li><li>Enter their name, a valid email and a 10 digit phone number.</li><li>Click Register. You will be told if the event is full or the email is already used.</li></ol>
+    </div>
+  </section>
+
+  <!-- Module 3: Venue allotment -->
+  <section class="page" id="page-Venues">
+    <div class="card"><h3>Add a venue</h3>
+      <form class="row" id="venueForm">
+        <label>Venue name<input id="venName" required maxlength="60"></label>
+        <label>Capacity<input id="venCap" type="number" min="1" value="100" required style="width:100px"></label>
+        <button class="btn" type="submit">Add Venue</button>
+      </form>
+    </div>
+    <div class="card"><h3>Allot a venue to an event</h3>
+      <form class="row" id="allotForm">
+        <label>Event<select id="allotEvent" style="min-width:250px"></select></label>
+        <label>Venue<select id="allotVenue" style="min-width:230px"></select></label>
+        <button class="btn green" type="submit">Allot Venue</button>
+      </form>
+    </div>
+    <div class="tablewrap"><table><thead><tr><th>ID</th><th>Venue</th><th>Capacity</th></tr></thead><tbody id="venueRows"></tbody></table></div>
+  </section>
+
+  <!-- Module 4: Schedule view -->
+  <section class="page" id="page-Schedule">
+    <div class="tablewrap"><table><thead><tr><th>Date</th><th>Time</th><th>Event</th><th>Type</th><th>Venue</th><th>Sessions</th></tr></thead><tbody id="scheduleRows"></tbody></table></div>
+    <div class="card"><h3>Add a session to an event</h3>
+      <form class="row" id="sessForm">
+        <label>Event<select id="sessEvent" style="min-width:250px"></select></label>
+        <label>Session title<input id="sessTitle" required maxlength="60"></label>
+        <label>Time<input id="sessTime" type="time" value="10:30" required></label>
+        <button class="btn" type="submit">Add Session</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Module 5: Participant list -->
+  <section class="page" id="page-Participants">
+    <div class="card"><h3>Choose an event</h3>
+      <div class="row" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <label>Event<select id="listEvent" style="min-width:270px"></select></label>
+        <button class="btn green" id="exportBtn" type="button">Export to CSV</button>
+      </div>
+    </div>
+    <div class="tablewrap"><table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th></tr></thead><tbody id="partRows"></tbody></table></div>
+  </section>
+</main>
+
+<div id="toast" role="status"></div>
+<dialog id="dlg"><h3 id="dlgTitle"></h3><p id="dlgMsg"></p><button class="btn" id="dlgOk" type="button">OK</button></dialog>
+
+<script>
+"use strict";
+
+/* ---------- model classes (same design as the Java project) ---------- */
+
+class VenueConflictError extends Error {}            // Java: VenueConflictException
+
+class Event {                                        // Java: abstract class Event implements Schedulable
+  constructor(o) {
+    this.id = o.id; this.name = o.name.trim(); this.date = o.date;
+    this.start = o.start; this.end = o.end; this.capacity = o.capacity;
+    this.venueId = o.venueId ?? null;
+    this.sessions = o.sessions || [];                // Java: inner class Session
+  }
+  get type() { return "Event"; }
+  static create(type, o) {
+    const C = { Seminar, Workshop, Fest }[type];
+    if (!C) throw new Error("Unknown event type: " + type);
+    return new C(o);
+  }
+  overlaps(other) {                                  // Java: Schedulable.overlaps()
+    return this.date === other.date && this.start < other.end && other.start < this.end;
+  }
+  addSession(title, time) {
+    if (time < this.start || time > this.end) throw new Error(`Session must be within ${this.start} - ${this.end}.`);
+    this.sessions.push({ title: title.trim(), time });
+  }
+  toJSON() { return { type: this.type, ...this }; }
+  get label() { return `#${this.id} ${this.name} [${this.type}]`; }
+}
+class Seminar  extends Event { get type() { return "Seminar"; } }
+class Workshop extends Event { get type() { return "Workshop"; } }
+class Fest     extends Event { get type() { return "Fest"; } }
+
+const isValidEmail = e => /^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(e.trim());
+const isValidPhone = p => /^\d{10}$/.test(p.trim());
+
+/* ---------- store (localStorage instead of JDBC) ---------- */
+
+const KEY = "eventhub-data-v1";
+let db = { venues: [], events: [], participants: [], seq: { venue: 1, event: 1, part: 1 } };
+
+function ymd(d) { const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+function daysFromNow(n) { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); }
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* storage blocked: keep in memory */ } }
+
+function load() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY));
+    if (raw && raw.events) {
+      db = raw;
+      db.events = raw.events.map(e => Event.create(e.type, e));
+      return;
+    }
+  } catch (e) { /* ignore */ }
+  seed();
+}
+
+function seed() {
+  db = { venues: [], events: [], participants: [], seq: { venue: 1, event: 1, part: 1 } };
+  const v1 = addVenue("Main Auditorium", 200), v2 = addVenue("Seminar Hall B", 60);
+  const e1 = addEvent("Seminar", "AI and Future Talk", daysFromNow(1), "10:00", "12:00", 150);
+  const e2 = addEvent("Workshop", "Java Swing Lab", daysFromNow(2), "14:00", "16:30", 40);
+  addEvent("Fest", "TechFest 2026", daysFromNow(6), "09:00", "18:00", 180);
+  allotVenue(e1, v1); allotVenue(e2, v2);
+  e1.addSession("Keynote", "10:15");
+  addParticipant(e1.id, "Sneha Kumari", "sneha@gmail.com", "9876543210");
+  addParticipant(e1.id, "Aditya Raj", "aditya@gmail.com", "9876501234");
+  save();
+}
+
+function addVenue(name, capacity) { const v = { id: db.seq.venue++, name: name.trim(), capacity }; db.venues.push(v); save(); return v; }
+function addEvent(type, name, date, start, end, capacity) {
+  const e = Event.create(type, { id: db.seq.event++, name, date, start, end, capacity });
+  db.events.push(e); save(); return e;
+}
+function venueOf(e) { return db.venues.find(v => v.id === e.venueId) || null; }
+function participantsOf(id) { return db.participants.filter(p => p.eventId === id); }
+
+function allotVenue(ev, v) {                         // throws VenueConflictError
+  if (v.capacity < ev.capacity) throw new VenueConflictError(`Venue '${v.name}' holds ${v.capacity} but the event needs ${ev.capacity}.`);
+  for (const o of db.events) {
+    if (o.id !== ev.id && o.venueId === v.id && ev.overlaps(o)) {
+      throw new VenueConflictError(`Venue '${v.name}' is already booked for '${o.name}' on ${o.date} (${o.start}-${o.end}).`);
+    }
+  }
+  ev.venueId = v.id; save();
+}
+
+function addParticipant(eventId, name, email, phone) {
+  const p = { id: db.seq.part++, eventId, name: name.trim(), email: email.trim().toLowerCase(), phone: phone.trim() };
+  db.participants.push(p); save(); return p;
+}
+
+/* ---------- UI helpers ---------- */
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+let toastTimer;
+function toast(msg, isErr) {
+  const t = $("toast"); t.textContent = msg; t.className = "show" + (isErr ? " err" : "");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = "", 3500);
+}
+function dialog(title, msg, warn) {
+  $("dlgTitle").textContent = title; $("dlgMsg").textContent = msg;
+  $("dlg").className = warn ? "warn" : ""; $("dlg").showModal();
+}
+$("dlgOk").onclick = () => $("dlg").close();
+
+const PAGES = {
+  Events: "Create seminars, workshops and fests",
+  Registration: "Register participants for an event",
+  Venues: "Add venues and allot them to events",
+  Schedule: "Everything happening, sorted by date and time",
+  Participants: "See who has registered and export the list"
+};
+
+function showPage(key) {
+  for (const k in PAGES) {
+    $("page-" + k).classList.toggle("active", k === key);
+    $("nav").querySelector(`[data-p="${k}"]`).classList.toggle("active", k === key);
+  }
+  $("pageTitle").textContent = key; $("pageSub").textContent = PAGES[key];
+}
+
+function fillSelect(sel, items, labelFn, valueFn) {
+  const keep = sel.value;
+  sel.innerHTML = items.map(i => `<option value="${valueFn(i)}">${esc(labelFn(i))}</option>`).join("");
+  if (items.some(i => String(valueFn(i)) === keep)) sel.value = keep;
+}
+const rowsOrEmpty = (rows, cols, msg) => rows.length ? rows.join("") : `<tr><td class="empty" colspan="${cols}">${msg}</td></tr>`;
+const tag = t => `<span class="tag t-${t}">${t}</span>`;
+
+function render() {
+  const ev = db.events;
+  $("sEvents").textContent = ev.length; $("sVenues").textContent = db.venues.length;
+  $("sRegs").textContent = db.participants.length; $("sOpen").textContent = ev.filter(e => !e.venueId).length;
+
+  $("eventRows").innerHTML = rowsOrEmpty(ev.map(e => `<tr><td>${e.id}</td><td>${esc(e.name)}</td><td>${tag(e.type)}</td><td>${e.date}</td><td>${e.start}</td><td>${e.end}</td><td>${e.capacity}</td><td>${venueOf(e) ? esc(venueOf(e).name) : '<span class="muted">-</span>'}</td></tr>`), 8, "No events yet. Create one above.");
+  $("venueRows").innerHTML = rowsOrEmpty(db.venues.map(v => `<tr><td>${v.id}</td><td>${esc(v.name)}</td><td>${v.capacity}</td></tr>`), 3, "No venues yet.");
+
+  const sorted = [...ev].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+  $("scheduleRows").innerHTML = rowsOrEmpty(sorted.map(e => {
+    const v = venueOf(e), s = e.sessions.slice().sort((a, b) => a.time.localeCompare(b.time)).map(x => `${x.time} ${esc(x.title)}`).join("; ");
+    return `<tr><td>${e.date}</td><td>${e.start} - ${e.end}</td><td>${esc(e.name)}</td><td>${tag(e.type)}</td><td>${v ? esc(v.name) : '<span class="muted">Not allotted</span>'}</td><td>${s || '<span class="muted">-</span>'}</td></tr>`;
+  }), 6, "Nothing scheduled yet.");
+
+  for (const id of ["regEvent", "allotEvent", "sessEvent", "listEvent"]) fillSelect($(id), ev, e => e.label, e => e.id);
+  fillSelect($("allotVenue"), db.venues, v => `${v.name} (capacity ${v.capacity})`, v => v.id);
+  renderParticipants();
+}
+
+function renderParticipants() {
+  const id = Number($("listEvent").value);
+  const list = id ? participantsOf(id) : [];
+  $("partRows").innerHTML = rowsOrEmpty(list.map(p => `<tr><td>${p.id}</td><td>${esc(p.name)}</td><td>${esc(p.email)}</td><td>${esc(p.phone)}</td></tr>`), 4, "No participants registered for this event.");
+}
+
+/* ---------- actions ---------- */
+
+function guard(fn) {
+  return e => {
+    e.preventDefault();
+    try { fn(); }
+    catch (err) {
+      if (err instanceof VenueConflictError) dialog("Venue conflict", err.message, true);
+      else toast(err.message, true);
+    }
+  };
+}
+const selEvent = id => { const e = db.events.find(x => x.id === Number($(id).value)); if (!e) throw new Error("Create an event first."); return e; };
+
+$("eventForm").onsubmit = guard(() => {
+  const name = $("evName").value.trim(), cap = parseInt($("evCap").value, 10);
+  if (!name) throw new Error("Event name is required.");
+  if (!($("evEnd").value > $("evStart").value)) throw new Error("End time must be after start time.");
+  if (!(cap > 0)) throw new Error("Capacity must be a whole number greater than zero.");
+  const e = addEvent($("evType").value, name, $("evDate").value, $("evStart").value, $("evEnd").value, cap);
+  $("evName").value = ""; render(); toast("Created " + e.label);
+});
+
+$("regForm").onsubmit = guard(() => {
+  const ev = selEvent("regEvent"), name = $("regName").value.trim(), email = $("regEmail").value, phone = $("regPhone").value;
+  if (!name) throw new Error("Name is required.");
+  if (!isValidEmail(email)) throw new Error("Enter a valid e-mail address.");
+  if (!isValidPhone(phone)) throw new Error("Phone must be exactly 10 digits.");
+  const existing = participantsOf(ev.id);
+  if (existing.length >= ev.capacity) throw new Error(`This event is full (${ev.capacity}).`);
+  if (existing.some(p => p.email === email.trim().toLowerCase())) throw new Error("That e-mail is already registered for this event.");
+  addParticipant(ev.id, name, email, phone);
+  $("regName").value = $("regEmail").value = $("regPhone").value = ""; render(); toast(`${name} registered for ${ev.name}`);
+});
+
+$("venueForm").onsubmit = guard(() => {
+  const name = $("venName").value.trim(), cap = parseInt($("venCap").value, 10);
+  if (!name) throw new Error("Venue name is required.");
+  if (!(cap > 0)) throw new Error("Capacity must be a whole number greater than zero.");
+  addVenue(name, cap); $("venName").value = ""; render(); toast("Added venue " + name);
+});
+
+$("allotForm").onsubmit = guard(() => {
+  const ev = selEvent("allotEvent"), v = db.venues.find(x => x.id === Number($("allotVenue").value));
+  if (!v) throw new Error("Add a venue first.");
+  allotVenue(ev, v); render(); toast(`${v.name} allotted to ${ev.name}`);
+});
+
+$("sessForm").onsubmit = guard(() => {
+  const ev = selEvent("sessEvent"), title = $("sessTitle").value.trim();
+  if (!title) throw new Error("Session title is required.");
+  ev.addSession(title, $("sessTime").value); save(); $("sessTitle").value = ""; render(); toast("Session added to " + ev.name);
+});
+
+$("listEvent").onchange = renderParticipants;
+
+$("exportBtn").onclick = () => {
+  try {
+    const ev = selEvent("listEvent");
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const csv = ["Name,Email,Phone", ...participantsOf(ev.id).map(p => `${q(p.name)},${p.email},${p.phone}`)].join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = ev.name.replace(/\W+/g, "_") + "_participants.csv"; a.click(); URL.revokeObjectURL(a.href);
+    toast("CSV downloaded");
+  } catch (err) { toast(err.message, true); }
+};
+
+$("resetBtn").onclick = () => { if (confirm("Replace all data with the sample data?")) { seed(); render(); toast("Sample data restored"); } };
+
+/* ---------- reminders (Java: ReminderThread) ---------- */
+
+const reminded = new Set();
+function checkReminders() {
+  const now = Date.now();
+  for (const e of db.events) {
+    const mins = (new Date(`${e.date}T${e.start}`).getTime() - now) / 60000;
+    if (mins >= 0 && mins <= 15 && !reminded.has(e.id)) {
+      reminded.add(e.id);
+      const v = venueOf(e);
+      dialog("Event Reminder", `${e.name} starts at ${e.start} (${v ? v.name : "venue not allotted"}).`);
+    }
+  }
+}
+
+/* ---------- start ---------- */
+
+for (const k in PAGES) {
+  const b = document.createElement("button"); b.textContent = k; b.dataset.p = k; b.onclick = () => showPage(k); $("nav").appendChild(b);
+}
+$("evDate").value = ymd(new Date());
+load(); render(); showPage("Events");
+checkReminders(); setInterval(checkReminders, 30000);
+</script>
+</body>
+</html>
