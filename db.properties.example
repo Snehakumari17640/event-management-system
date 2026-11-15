@@ -1,0 +1,5 @@
+# Copy to db.properties (next to where you run the program) to use MySQL.
+# Tables are created automatically on first connect.
+url=jdbc:mysql://localhost:3306/eventdb
+user=root
+password=your_password
